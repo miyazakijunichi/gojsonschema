@@ -27,10 +27,11 @@ package gojsonschema
 
 import (
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 )
 
 func Validate(ls JSONLoader, ld JSONLoader) (*Result, error) {
@@ -631,13 +632,15 @@ func (v *subSchema) validatePatternProperty(currentSubSchema *subSchema, key str
 	validatedkey := false
 
 	for pk, pv := range currentSubSchema.patternProperties {
-		if matches, _ := regexp.MatchString(pk, key); matches {
-			has = true
-			subContext := newJsonContext(key, context)
-			validationResult := pv.subValidateWithContext(value, subContext)
-			result.mergeErrors(validationResult)
-			if validationResult.Valid() {
-				validatedkey = true
+		if r, err := pcre.Compile(pk, pcre.JAVASCRIPT_COMPAT|pcre.UTF8); err == nil {
+			if matcher := r.MatcherString(key, 0); matcher.Matches() {
+				has = true
+				subContext := newJsonContext(key, context)
+				validationResult := pv.subValidateWithContext(value, subContext)
+				result.mergeErrors(validationResult)
+				if validationResult.Valid() {
+					validatedkey = true
+				}
 			}
 		}
 	}
@@ -687,14 +690,13 @@ func (v *subSchema) validateString(currentSubSchema *subSchema, value interface{
 
 	// pattern:
 	if currentSubSchema.pattern != nil {
-		if !currentSubSchema.pattern.MatchString(stringValue) {
+		if matcher := currentSubSchema.pattern.MatcherString(stringValue, 0); !matcher.Matches() {
 			result.addError(
 				new(DoesNotMatchPatternError),
 				context,
 				value,
-				ErrorDetails{"pattern": currentSubSchema.pattern},
+				ErrorDetails{"pattern": currentSubSchema.patternString},
 			)
-
 		}
 	}
 

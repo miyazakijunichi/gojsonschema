@@ -28,9 +28,9 @@ package gojsonschema
 
 import (
 	"errors"
-	"regexp"
 	"strings"
 
+	"github.com/glenn-brown/golang-pkg-pcre/src/pkg/pcre"
 	"github.com/xeipuuv/gojsonreference"
 )
 
@@ -107,7 +107,8 @@ type subSchema struct {
 	// validation : string
 	minLength *int
 	maxLength *int
-	pattern   *regexp.Regexp
+	pattern   *pcre.Regexp
+	patternString string
 	format    string
 
 	// validation : object
